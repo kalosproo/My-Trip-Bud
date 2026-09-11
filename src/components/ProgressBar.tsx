@@ -30,11 +30,21 @@ export default function ProgressBar({ percent }: { percent: number }) {
   }, [clamped]);
 
   return (
-    <div className="rounded-[1.5rem] bg-black/5 p-1.5 ring-1 ring-black/5">
-      <div className="rounded-[calc(1.5rem-0.375rem)] bg-white shadow-inset-soft px-4 py-3">
-        <div className="flex items-center justify-between mb-2 text-sm text-slate">
+    <div className="w-full rounded-[1.5rem] bg-black/5 dark:bg-white/10 p-1.5 ring-1 ring-black/5 dark:ring-white/10">
+      <div className="rounded-[calc(1.5rem-0.375rem)] bg-white dark:bg-panel shadow-inset-soft dark:shadow-inset-soft-dark px-4 py-3">
+        <div className="flex items-center justify-between mb-2 text-sm text-slate dark:text-bone/70">
           <span>Fund progress</span>
-          <span ref={labelRef} className="font-semibold text-ink">
+          <span ref={labelRef} className="font-semibold text-ink dark:text-bone">
+            0%
+          </span>
+        </div>
+        <div className="h-2.5 w-full rounded-full bg-black/5 dark:bg-white/10 overflow-hidden">
+          <div ref={fillRef} className="h-full w-0 rounded-full bg-accent" />
+        </div>
+      </div>
+    </div>
+  );
+}          <span ref={labelRef} className="font-semibold text-ink">
             0%
           </span>
         </div>
