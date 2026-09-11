@@ -50,6 +50,22 @@ export default function Home() {
       )}
     </main>
   );
+}            Start a trip fund
+          </button>
+          <p className="text-xs text-slate dark:text-bone/60">
+            Signed in as {user.displayName}. Got a trip link from a friend? Open it directly.
+          </p>
+        </div>
+      ) : (
+        <button
+          onClick={() => signInWithGoogle()}
+          className="rounded-full bg-ink dark:bg-bone px-6 py-3 text-sm font-medium text-bone dark:text-ink transition-transform duration-300 ease-fluid active:scale-[0.98]"
+        >
+          Continue with Google
+        </button>
+      )}
+    </main>
+  );
 }          </button>
           <p className="text-xs text-slate">
             Signed in as {user.displayName}. Got a trip link from a friend? Open it directly.
