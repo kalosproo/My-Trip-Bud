@@ -16,6 +16,7 @@ import {
   collection,
   addDoc,
   updateDoc,
+  deleteDoc,
   arrayUnion,
   onSnapshot,
   serverTimestamp,
@@ -70,6 +71,7 @@ export type Trip = {
   name: string;
   goalAmount: number;
   createdBy: string;
+  mode: "individual" | "team";
   memberUids: string[];
   members: Record<string, Member>;
 };
@@ -84,7 +86,12 @@ export type SavingsEntry = {
 };
 
 // ---- Trip creation / joining ----
-export async function createTrip(name: string, goalAmount: number, user: User) {
+export async function createTrip(
+  name: string,
+  goalAmount: number,
+  user: User,
+  mode: "individual" | "team"
+) {
   const member: Member = {
     uid: user.uid,
     displayName: user.displayName ?? "Friend",
@@ -95,6 +102,7 @@ export async function createTrip(name: string, goalAmount: number, user: User) {
     name,
     goalAmount,
     createdBy: user.uid,
+    mode,
     memberUids: [user.uid],
     members: { [user.uid]: member },
   });
@@ -145,5 +153,37 @@ export async function addSavingsEntry(
   });
   await updateDoc(doc(db, "trips", tripId), {
     [`members.${user.uid}.totalSaved`]: currentTotal + amount,
+  });
+}
+
+// ---- Editing/deleting your own entry (keeps totalSaved in sync with the diff) ----
+export async function updateSavingsEntry(
+  tripId: string,
+  entryId: string,
+  uid: string,
+  oldAmount: number,
+  newAmount: number,
+  note: string,
+  currentTotal: number
+) {
+  await updateDoc(doc(db, "trips", tripId, "savingsLog", entryId), {
+    amount: newAmount,
+    note: note || null,
+  });
+  await updateDoc(doc(db, "trips", tripId), {
+    [`members.${uid}.totalSaved`]: currentTotal - oldAmount + newAmount,
+  });
+}
+
+export async function deleteSavingsEntry(
+  tripId: string,
+  entryId: string,
+  uid: string,
+  amount: number,
+  currentTotal: number
+) {
+  await deleteDoc(doc(db, "trips", tripId, "savingsLog", entryId));
+  await updateDoc(doc(db, "trips", tripId), {
+    [`members.${uid}.totalSaved`]: currentTotal - amount,
   });
 }

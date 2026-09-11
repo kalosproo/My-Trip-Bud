@@ -8,6 +8,8 @@ import {
   watchSavingsLog,
   joinTrip,
   addSavingsEntry,
+  updateSavingsEntry,
+  deleteSavingsEntry,
   signInWithGoogle,
   type User,
   type Trip,
@@ -16,6 +18,7 @@ import {
 import ProgressBar from "@/components/ProgressBar";
 import MemberCard from "@/components/MemberCard";
 import AddSavingsForm from "@/components/AddSavingsForm";
+import LogEntry from "@/components/LogEntry";
 
 export default function TripDashboard({ params }: { params: { tripId: string } }) {
   const { tripId } = params;
@@ -35,9 +38,10 @@ export default function TripDashboard({ params }: { params: { tripId: string } }
   useEffect(() => watchTrip(tripId, setTrip), [tripId]);
   useEffect(() => watchSavingsLog(tripId, setLog), [tripId]);
 
-  // auto-join: any signed-in friend opening the link becomes a member
+  // auto-join: any signed-in friend opening a team link becomes a member.
+  // individual funds are private — no one auto-joins those.
   useEffect(() => {
-    if (user && trip && !trip.memberUids.includes(user.uid)) {
+    if (user && trip && trip.mode === "team" && !trip.memberUids.includes(user.uid)) {
       joinTrip(tripId, user);
     }
   }, [user, trip, tripId]);
@@ -80,19 +84,22 @@ export default function TripDashboard({ params }: { params: { tripId: string } }
       <header className="flex items-start justify-between gap-3">
         <div>
           <span className="inline-block rounded-full px-3 py-1 text-[10px] uppercase tracking-[0.2em] font-medium bg-black/5 text-slate mb-3">
-            Trip fund
+            {trip.mode === "individual" ? "Solo fund" : "Trip fund"}
           </span>
           <h1 className="font-display text-3xl text-ink">{trip.name}</h1>
           <p className="text-slate text-sm mt-1">
-            Goal ₹{trip.goalAmount.toLocaleString("en-IN")} · split ₹{share.toLocaleString("en-IN")} each
+            Goal ₹{trip.goalAmount.toLocaleString("en-IN")}
+            {trip.mode === "team" ? ` · split ₹${share.toLocaleString("en-IN")} each` : ""}
           </p>
         </div>
-        <button
-          onClick={copyInviteLink}
-          className="shrink-0 rounded-full bg-black/5 px-4 py-2 text-xs font-medium text-ink transition-transform duration-300 ease-fluid active:scale-[0.98]"
-        >
-          {copied ? "Copied ✓" : "Copy invite link"}
-        </button>
+        {trip.mode === "team" && (
+          <button
+            onClick={copyInviteLink}
+            className="shrink-0 rounded-full bg-black/5 px-4 py-2 text-xs font-medium text-ink transition-transform duration-300 ease-fluid active:scale-[0.98]"
+          >
+            {copied ? "Copied ✓" : "Copy invite link"}
+          </button>
+        )}
       </header>
 
       <ProgressBar percent={percent} />
@@ -103,26 +110,30 @@ export default function TripDashboard({ params }: { params: { tripId: string } }
         />
       )}
 
-      <section>
-        <h2 className="text-xs uppercase tracking-[0.15em] text-slate mb-2">Who&apos;s saved what</h2>
-        <div ref={listRef} className="flex flex-col gap-2">
-          {members.map((m) => (
-            <MemberCard key={m.uid} member={m} share={share} />
-          ))}
-        </div>
-      </section>
+      {trip.mode === "team" && (
+        <section>
+          <h2 className="text-xs uppercase tracking-[0.15em] text-slate mb-2">Who&apos;s saved what</h2>
+          <div ref={listRef} className="flex flex-col gap-2">
+            {members.map((m) => (
+              <MemberCard key={m.uid} member={m} share={share} />
+            ))}
+          </div>
+        </section>
+      )}
 
       <section>
         <h2 className="text-xs uppercase tracking-[0.15em] text-slate mb-2">Log</h2>
         <div className="flex flex-col gap-1.5">
           {log.map((entry) => (
-            <div key={entry.id} className="text-xs text-slate flex justify-between rounded-xl bg-black/5 px-3 py-2">
-              <span>
-                {entry.displayName}
-                {entry.note ? ` — ${entry.note}` : ""}
-              </span>
-              <span className="font-medium text-ink">+₹{entry.amount.toLocaleString("en-IN")}</span>
-            </div>
+            <LogEntry
+              key={entry.id}
+              entry={entry}
+              isMine={entry.uid === user.uid}
+              onSave={(amount, note) =>
+                updateSavingsEntry(tripId, entry.id, entry.uid, entry.amount, amount, note, me.totalSaved)
+              }
+              onDelete={() => deleteSavingsEntry(tripId, entry.id, entry.uid, entry.amount, me.totalSaved)}
+            />
           ))}
           {log.length === 0 && <p className="text-xs text-slate">No entries yet — be the first.</p>}
         </div>

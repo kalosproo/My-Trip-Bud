@@ -8,6 +8,7 @@ export default function CreateTrip() {
   const [user, setUser] = useState<User | null>(null);
   const [name, setName] = useState("");
   const [goal, setGoal] = useState("");
+  const [mode, setMode] = useState<"individual" | "team">("team");
   const [busy, setBusy] = useState(false);
   const router = useRouter();
 
@@ -17,7 +18,7 @@ export default function CreateTrip() {
     e.preventDefault();
     if (!user || !name.trim() || !Number(goal)) return;
     setBusy(true);
-    const tripId = await createTrip(name.trim(), Number(goal), user);
+    const tripId = await createTrip(name.trim(), Number(goal), user, mode);
     router.push(`/trip/${tripId}`);
   }
 
@@ -33,6 +34,33 @@ export default function CreateTrip() {
       >
         <div className="rounded-[calc(2rem-0.5rem)] bg-white shadow-inset-soft p-6 flex flex-col gap-4">
           <h1 className="font-display text-2xl text-ink">New trip fund</h1>
+
+          <div className="flex gap-2 rounded-full bg-black/5 p-1">
+            <button
+              type="button"
+              onClick={() => setMode("individual")}
+              className={`flex-1 rounded-full py-2 text-xs font-medium transition-colors duration-300 ease-fluid ${
+                mode === "individual" ? "bg-ink text-bone" : "text-slate"
+              }`}
+            >
+              Just me
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("team")}
+              className={`flex-1 rounded-full py-2 text-xs font-medium transition-colors duration-300 ease-fluid ${
+                mode === "team" ? "bg-ink text-bone" : "text-slate"
+              }`}
+            >
+              With friends
+            </button>
+          </div>
+          <p className="text-xs text-slate -mt-2">
+            {mode === "individual"
+              ? "A private fund just for you — no invite link."
+              : "You'll get a link to invite friends after this."}
+          </p>
+
           <input
             type="text"
             placeholder="Trip name (e.g. Goa 2027)"
