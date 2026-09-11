@@ -36,6 +36,7 @@ const firebaseConfig = {
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+export type { User };
 
 // Analytics only works in the browser (not during server render), and only
 // if the browser actually supports it — guard both.
