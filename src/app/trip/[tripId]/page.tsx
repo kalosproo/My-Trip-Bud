@@ -10,7 +10,6 @@ import {
   addSavingsEntry,
   updateSavingsEntry,
   deleteSavingsEntry,
-  signInWithGoogle,
   type User,
   type Trip,
   type SavingsEntry,
@@ -43,10 +42,17 @@ export default function TripDashboard({ params }: { params: { tripId: string } }
   useEffect(() => watchSavingsLog(tripId, setLog), [tripId]);
 
   useEffect(() => {
+    if (!user) return;
     if (user && trip && trip.mode === "team" && !trip.memberUids.includes(user.uid)) {
       joinTrip(tripId, user);
     }
   }, [user, trip, tripId]);
+
+  useEffect(() => {
+    if (!user) {
+      window.location.replace("/");
+    }
+  }, [user]);
 
   useEffect(() => {
     if (!listRef.current) return;
@@ -71,17 +77,7 @@ export default function TripDashboard({ params }: { params: { tripId: string } }
   }, [percent]);
 
   if (!user) {
-    return (
-      <main className="min-h-[100dvh] w-full flex flex-col items-center justify-center gap-4 px-4">
-        <p className="text-slate dark:text-bone/60 text-sm transition-colors duration-300">Sign in to view this trip.</p>
-        <button
-          onClick={() => signInWithGoogle()}
-          className="rounded-full bg-ink dark:bg-bone px-6 py-3 text-sm font-medium text-bone dark:text-ink transition-colors duration-300"
-        >
-          Continue with Google
-        </button>
-      </main>
-    );
+    return null;
   }
 
   if (!trip) {
