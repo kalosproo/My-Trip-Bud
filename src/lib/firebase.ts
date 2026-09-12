@@ -22,6 +22,8 @@ import {
   serverTimestamp,
   query,
   orderBy,
+  where,
+  limit,
 } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -39,15 +41,12 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export type { User };
 
-// Analytics only works in the browser (not during server render), and only
-// if the browser actually supports it — guard both.
 if (typeof window !== "undefined") {
   analyticsSupported().then((ok) => {
     if (ok) getAnalytics(app);
   });
 }
 
-// ---- Auth ----
 export function signInWithGoogle() {
   return signInWithPopup(auth, new GoogleAuthProvider());
 }
@@ -58,7 +57,6 @@ export function watchAuth(cb: (user: User | null) => void) {
   return onAuthStateChanged(auth, cb);
 }
 
-// ---- Types ----
 export type Member = {
   uid: string;
   displayName: string;
@@ -85,7 +83,6 @@ export type SavingsEntry = {
   createdAt?: unknown;
 };
 
-// ---- Trip creation / joining ----
 export async function createTrip(
   name: string,
   goalAmount: number,
@@ -109,6 +106,14 @@ export async function createTrip(
   return ref.id;
 }
 
+export function watchUserTrip(userId: string, cb: (trip: Trip | null) => void) {
+  const q = query(collection(db, "trips"), where("createdBy", "==", userId), limit(1));
+  return onSnapshot(q, (snap) => {
+    const item = snap.docs[0];
+    cb(item ? ({ id: item.id, ...item.data() } as Trip) : null);
+  });
+}
+
 export async function joinTrip(tripId: string, user: User) {
   const member: Member = {
     uid: user.uid,
@@ -122,7 +127,6 @@ export async function joinTrip(tripId: string, user: User) {
   });
 }
 
-// ---- Live subscriptions ----
 export function watchTrip(tripId: string, cb: (trip: Trip | null) => void) {
   return onSnapshot(doc(db, "trips", tripId), (snap) => {
     cb(snap.exists() ? ({ id: snap.id, ...snap.data() } as Trip) : null);
@@ -136,7 +140,6 @@ export function watchSavingsLog(tripId: string, cb: (entries: SavingsEntry[]) =>
   });
 }
 
-// ---- Adding a savings entry (bumps the member's running total) ----
 export async function addSavingsEntry(
   tripId: string,
   user: User,
@@ -156,7 +159,6 @@ export async function addSavingsEntry(
   });
 }
 
-// ---- Editing/deleting your own entry (keeps totalSaved in sync with the diff) ----
 export async function updateSavingsEntry(
   tripId: string,
   entryId: string,

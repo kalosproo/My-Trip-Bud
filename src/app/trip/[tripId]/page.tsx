@@ -65,7 +65,6 @@ export default function TripDashboard({ params }: { params: { tripId: string } }
   const totalSaved = members.reduce((sum, m) => sum + m.totalSaved, 0);
   const percent = trip && trip.goalAmount > 0 ? (totalSaved / trip.goalAmount) * 100 : 0;
 
-  // fire the celebration overlay once, the moment the fund crosses 100%
   useEffect(() => {
     if (prevPercentRef.current < 100 && percent >= 100) setCelebrate(true);
     prevPercentRef.current = percent;
@@ -149,9 +148,9 @@ export default function TripDashboard({ params }: { params: { tripId: string } }
                 entry={entry}
                 isMine={entry.uid === user.uid}
                 onSave={(amount, note) =>
-                  updateSavingsEntry(tripId, entry.id, entry.uid, entry.amount, amount, note, me.totalSaved)
+                  updateSavingsEntry(tripId, entry.id, entry.uid, entry.amount, amount, note, me?.totalSaved ?? 0)
                 }
-                onDelete={() => deleteSavingsEntry(tripId, entry.id, entry.uid, entry.amount, me.totalSaved)}
+                onDelete={() => deleteSavingsEntry(tripId, entry.id, entry.uid, entry.amount, me?.totalSaved ?? 0)}
               />
             ))}
             {log.length === 0 && (
@@ -172,8 +171,9 @@ export default function TripDashboard({ params }: { params: { tripId: string } }
             </svg>
             <span className="text-[10px]">Home</span>
           </a>
+
           {trip.mode === "team" && (
-            
+            <a
               href="#members"
               className="flex flex-col items-center gap-1 text-slate dark:text-bone/60 hover:text-ink dark:hover:text-bone transition-colors duration-300"
             >
@@ -186,7 +186,8 @@ export default function TripDashboard({ params }: { params: { tripId: string } }
               <span className="text-[10px]">Members</span>
             </a>
           )}
-          
+
+          <a
             href="#log"
             className="flex flex-col items-center gap-1 text-slate dark:text-bone/60 hover:text-ink dark:hover:text-bone transition-colors duration-300"
           >
