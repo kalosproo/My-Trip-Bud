@@ -3,7 +3,15 @@
 import { useEffect, useRef } from "react";
 import anime from "animejs";
 
-export default function ProgressBar({ percent }: { percent: number }) {
+export default function ProgressBar({
+  percent,
+  raised,
+  goal,
+}: {
+  percent: number;
+  raised?: number;
+  goal?: number;
+}) {
   const fillRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLSpanElement>(null);
   const clamped = Math.max(0, Math.min(100, percent));
@@ -29,6 +37,9 @@ export default function ProgressBar({ percent }: { percent: number }) {
     });
   }, [clamped]);
 
+  const status =
+    percent >= 100 ? "Goal reached!" : percent >= 50 ? "On track!" : percent > 0 ? "Just started" : "No entries yet";
+
   return (
     <div className="w-full rounded-[1.5rem] bg-black/5 dark:bg-white/10 p-1.5 ring-1 ring-black/5 dark:ring-white/10 transition-colors duration-300">
       <div className="rounded-[calc(1.5rem-0.375rem)] bg-white dark:bg-panel shadow-inset-soft dark:shadow-inset-soft-dark px-4 py-3 transition-colors duration-300">
@@ -41,6 +52,14 @@ export default function ProgressBar({ percent }: { percent: number }) {
         <div className="h-2.5 w-full rounded-full bg-black/5 dark:bg-white/10 overflow-hidden transition-colors duration-300">
           <div ref={fillRef} className="h-full w-0 rounded-full bg-accent" />
         </div>
+        {raised !== undefined && goal !== undefined && (
+          <div className="flex items-center justify-between mt-2.5 text-xs transition-colors duration-300">
+            <span className="text-slate dark:text-bone/60">
+              ₹{raised.toLocaleString("en-IN")} of ₹{goal.toLocaleString("en-IN")}
+            </span>
+            <span className="font-medium text-accent">{status}</span>
+          </div>
+        )}
       </div>
     </div>
   );
