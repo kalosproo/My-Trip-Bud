@@ -37,6 +37,13 @@ export default function TripDashboard({ params }: { params: { tripId: string } }
     setTimeout(() => setCopied(false), 1800);
   }
 
+  function scrollToSection(id: "members" | "log") {
+    const section = document.getElementById(id);
+    if (!section) return;
+    section.scrollIntoView({ behavior: "smooth", block: "start" });
+    window.history.replaceState(null, "", `#${id}`);
+  }
+
   useEffect(() => watchAuth(setUser), []);
   useEffect(() => watchTrip(tripId, setTrip), [tripId]);
   useEffect(() => watchSavingsLog(tripId, setLog), [tripId]);
@@ -123,7 +130,7 @@ export default function TripDashboard({ params }: { params: { tripId: string } }
         )}
 
         {trip.mode === "team" && (
-          <section id="members">
+          <section id="members" className="scroll-mt-24">
             <h2 className="text-xs uppercase tracking-[0.15em] text-slate dark:text-bone/60 mb-2 transition-colors duration-300">
               Who&apos;s saved what
             </h2>
@@ -135,7 +142,7 @@ export default function TripDashboard({ params }: { params: { tripId: string } }
           </section>
         )}
 
-        <section id="log">
+        <section id="log" className="scroll-mt-24">
           <h2 className="text-xs uppercase tracking-[0.15em] text-slate dark:text-bone/60 mb-2 transition-colors duration-300">Log</h2>
           <div className="flex flex-col gap-1.5">
             {log.map((entry) => (
@@ -169,9 +176,11 @@ export default function TripDashboard({ params }: { params: { tripId: string } }
           </a>
 
           {trip.mode === "team" && (
-            <a
-              href="#members"
+            <button
+              type="button"
+              onClick={() => scrollToSection("members")}
               className="flex flex-col items-center gap-1 text-slate dark:text-bone/60 hover:text-ink dark:hover:text-bone transition-colors duration-300"
+              aria-label="Go to Members"
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                 <circle cx="9" cy="8" r="3" stroke="currentColor" strokeWidth="1.6" />
@@ -180,18 +189,20 @@ export default function TripDashboard({ params }: { params: { tripId: string } }
                 <path d="M15 14c2.8.3 5 2 5 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
               </svg>
               <span className="text-[10px]">Members</span>
-            </a>
+            </button>
           )}
 
-          <a
-            href="#log"
+          <button
+            type="button"
+            onClick={() => scrollToSection("log")}
             className="flex flex-col items-center gap-1 text-slate dark:text-bone/60 hover:text-ink dark:hover:text-bone transition-colors duration-300"
+            aria-label="Go to Log"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
               <path d="M5 6h14M5 12h14M5 18h9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
             </svg>
             <span className="text-[10px]">Log</span>
-          </a>
+          </button>
         </div>
       </nav>
 
