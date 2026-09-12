@@ -15,11 +15,10 @@ const sans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "My Trip Bud — save for trips together",
+  title: "MyTripBud — save for trips together",
   description: "Set a trip goal, split it with friends, watch the fund fill up.",
 };
 
-// Sets the dark/light class before paint so there's no flash of the wrong theme.
 const themeInitScript = `
 (function () {
   try {
