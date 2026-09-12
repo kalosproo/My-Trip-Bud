@@ -34,6 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <head>
+        <meta name="google-site-verification" content="7QrmzGvyityU0C4OyiHuEnluq0wXCAYbFUgBh70S1ys" />
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body
