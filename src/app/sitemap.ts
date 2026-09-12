@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://trippy-mate.vercel.app";
+const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://mytripbud.vercel.app";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
