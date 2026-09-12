@@ -2,6 +2,8 @@ import type { Member } from "@/lib/firebase";
 
 export default function MemberCard({ member, share }: { member: Member; share: number }) {
   const pct = share > 0 ? Math.min(100, Math.round((member.totalSaved / share) * 100)) : 0;
+  const reached = share > 0 && member.totalSaved >= share;
+
   return (
     <div className="w-full rounded-2xl bg-white dark:bg-panel ring-1 ring-black/5 dark:ring-white/10 shadow-soft dark:shadow-soft-dark px-4 py-3 flex items-center gap-3 transition-colors duration-300">
       {member.photoURL ? (
@@ -17,8 +19,17 @@ export default function MemberCard({ member, share }: { member: Member; share: n
         <p className="text-xs text-slate dark:text-bone/60 transition-colors duration-300">
           ₹{member.totalSaved.toLocaleString("en-IN")} / ₹{share.toLocaleString("en-IN")}
         </p>
+        <div className="h-1.5 w-full rounded-full bg-black/5 dark:bg-white/10 overflow-hidden mt-1.5 transition-colors duration-300">
+          <div className="h-full rounded-full bg-accent transition-all duration-500 ease-fluid" style={{ width: `${pct}%` }} />
+        </div>
       </div>
-      <span className="text-xs font-semibold text-accent shrink-0">{pct}%</span>
+      {reached ? (
+        <span className="shrink-0 rounded-full bg-accent/10 dark:bg-accent/20 text-accent text-[11px] font-semibold px-2.5 py-1 transition-colors duration-300">
+          Reached ✓
+        </span>
+      ) : (
+        <span className="text-xs font-semibold text-accent shrink-0">{pct}%</span>
+      )}
     </div>
   );
 }
