@@ -1,34 +1,36 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { watchAuth, createTrip, type User } from "@/lib/firebase";
+import { createTrip } from "@/lib/firebase";
+import { useAuth, SignInPrompt } from "@/components/AuthProvider";
+import { errorMessage } from "@/lib/errors";
 
 export default function CreateTrip() {
-  const [user, setUser] = useState<User | null>(null);
+  const { user, loading } = useAuth();
+  const [error, setError] = useState("");
   const [name, setName] = useState("");
   const [goal, setGoal] = useState("");
   const [mode, setMode] = useState<"individual" | "team">("team");
   const [busy, setBusy] = useState(false);
   const router = useRouter();
 
-  useEffect(() => watchAuth(setUser), []);
+
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!user || !name.trim() || !Number(goal)) return;
+    if (!user || busy) return;
     setBusy(true);
-    const tripId = await createTrip(name.trim(), Number(goal), user, mode);
-    router.push(`/trip/${tripId}`);
+    setError("");
+    try {
+      const tripId = await createTrip(name.trim(), Number(goal), user, mode);
+      router.push(`/trip/${tripId}`);
+    } catch (failure) { setError(errorMessage(failure)); }
+    finally { setBusy(false); }
   }
 
-  if (!user) {
-    return (
-      <p className="text-center py-24 text-slate dark:text-bone/60 text-sm px-4 transition-colors duration-300">
-        Sign in first from the home page.
-      </p>
-    );
-  }
+  if (loading) return <p role="status" className="text-center py-24">Loading your account…</p>;
+  if (!user) return <SignInPrompt />;
 
   return (
     <main className="min-h-[100dvh] w-full flex items-center justify-center px-4 py-16 sm:py-24">
@@ -42,6 +44,7 @@ export default function CreateTrip() {
           <div className="flex gap-2 rounded-full bg-black/5 dark:bg-white/10 p-1 transition-colors duration-300">
             <button
               type="button"
+              aria-pressed={mode === "individual"}
               onClick={() => setMode("individual")}
               className={`flex-1 rounded-full py-2.5 sm:py-2 text-xs font-medium transition-colors duration-300 ease-fluid ${
                 mode === "individual" ? "bg-ink dark:bg-bone text-bone dark:text-ink" : "text-slate dark:text-bone/60"
@@ -51,6 +54,7 @@ export default function CreateTrip() {
             </button>
             <button
               type="button"
+              aria-pressed={mode === "team"}
               onClick={() => setMode("team")}
               className={`flex-1 rounded-full py-2.5 sm:py-2 text-xs font-medium transition-colors duration-300 ease-fluid ${
                 mode === "team" ? "bg-ink dark:bg-bone text-bone dark:text-ink" : "text-slate dark:text-bone/60"
@@ -67,6 +71,8 @@ export default function CreateTrip() {
 
           <input
             type="text"
+            aria-label="Trip name"
+            maxLength={120}
             placeholder="Trip name (e.g. Goa 2027)"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -76,6 +82,9 @@ export default function CreateTrip() {
           <input
             type="number"
             min="1"
+            max="1000000000"
+            step="1"
+            aria-label="Goal amount in rupees"
             inputMode="decimal"
             placeholder="₹ total goal amount"
             value={goal}
@@ -83,6 +92,7 @@ export default function CreateTrip() {
             className="w-full rounded-full bg-black/5 dark:bg-white/10 px-4 py-3 text-base sm:text-sm text-ink dark:text-bone outline-none focus:ring-2 focus:ring-accent transition-colors duration-300"
             required
           />
+          {error && <p role="alert" className="text-sm text-red-700 dark:text-red-300">{error}</p>}
           <button
             type="submit"
             disabled={busy}

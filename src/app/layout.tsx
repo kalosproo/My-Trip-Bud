@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Fraunces, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
-import ThemeToggle from "@/components/ThemeToggle";
+import AppHeader from "@/components/AppHeader";
+import { AuthProvider } from "@/components/AuthProvider";
 
 const display = Fraunces({
   subsets: ["latin"],
@@ -31,7 +32,7 @@ const themeInitScript = `
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <meta name="google-site-verification" content="7QrmzGvyityU0C4OyiHuEnluq0wXCAYbFUgBh70S1ys" />
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
@@ -40,8 +41,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         className={`${display.variable} ${sans.variable} font-sans relative min-h-[100dvh] w-full overflow-x-hidden bg-bone dark:bg-ink transition-colors duration-300`}
       >
         <div className="grain" />
-        <ThemeToggle />
-        <div className="relative z-10">{children}</div>
+        <AuthProvider>
+          <AppHeader />
+          <div className="relative z-10">{children}</div>
+        </AuthProvider>
       </body>
     </html>
   );

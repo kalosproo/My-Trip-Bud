@@ -3,62 +3,35 @@
 import { useEffect, useRef } from "react";
 import anime from "animejs";
 
-export default function Celebration({
-  message,
-  onClose,
-}: {
-  message: string;
-  onClose: () => void;
-}) {
+export default function Celebration({ message, onClose }: { message: string; onClose: () => void }) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
   const burstRef = useRef<HTMLDivElement>(null);
-  const dotColors = ["#2563EB", "#18181B", "#FAFAFA"];
-
+  const closeRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
-    if (!burstRef.current) return;
-    anime({
-      targets: burstRef.current.children,
-      translateX: () => anime.random(-140, 140),
-      translateY: () => anime.random(-160, -20),
-      scale: [0, 1],
-      opacity: [1, 0],
-      duration: 1100,
-      delay: anime.stagger(15),
-      easing: "easeOutCubic",
-    });
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const dialog = dialogRef.current;
+    dialog?.showModal();
+    closeRef.current?.focus();
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const targets = Array.from(burstRef.current?.children ?? []);
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      anime({ targets, translateX: () => anime.random(-100, 100), translateY: () => anime.random(-80, -20), scale: [0, 1], opacity: [1, 0], duration: 1100, delay: anime.stagger(15), easing: "easeOutCubic" });
+    }
+    return () => {
+      anime.remove(targets);
+      dialog?.close();
+      document.body.style.overflow = previousOverflow;
+      previousFocus?.focus();
+    };
   }, []);
-
-  return (
-    <div className="fixed inset-0 z-30 flex items-center justify-center bg-ink/40 dark:bg-black/60 px-4">
-      <div className="relative rounded-[2rem] bg-white dark:bg-panel shadow-soft dark:shadow-soft-dark px-8 py-10 max-w-xs w-full text-center">
-        <div ref={burstRef} className="absolute left-1/2 top-10 pointer-events-none">
-          {Array.from({ length: 18 }).map((_, i) => (
-            <span
-              key={i}
-              className="absolute w-2 h-2 rounded-full"
-              style={{
-                backgroundColor: dotColors[i % dotColors.length],
-                left: "50%",
-                top: "0%",
-                marginLeft: "-4px",
-                marginTop: "-4px",
-              }}
-            />
-          ))}
-        </div>
-        <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-ink dark:bg-bone flex items-center justify-center text-bone dark:text-ink">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </div>
-        <p className="font-display text-xl text-ink dark:text-bone mb-2">{message}</p>
-        <p className="text-xs text-slate dark:text-bone/60 mb-6">Every friend chipped in — the fund is fully saved.</p>
-        <button
-          onClick={onClose}
-          className="rounded-full bg-ink dark:bg-bone px-6 py-2.5 text-sm font-medium text-bone dark:text-ink transition-transform duration-300 ease-fluid active:scale-[0.98]"
-        >
-          Nice!
-        </button>
-      </div>
+  return <dialog ref={dialogRef} aria-labelledby="celebration-title" aria-describedby="celebration-description" onCancel={(event) => { event.preventDefault(); onClose(); }} className="w-[calc(100%-2rem)] max-w-xs rounded-[2rem] bg-white dark:bg-panel text-ink dark:text-bone px-8 py-10 text-center shadow-soft backdrop:bg-black/50">
+    <div ref={burstRef} aria-hidden="true" className="absolute left-1/2 top-20 pointer-events-none">
+      {Array.from({ length: 18 }, (_, index) => <span key={index} className={`absolute w-2 h-2 rounded-full opacity-0 ${["bg-blue-600 dark:bg-blue-400", "bg-amber-600 dark:bg-amber-400", "bg-emerald-600 dark:bg-emerald-400"][index % 3]}`} />)}
     </div>
-  );
+    <div aria-hidden="true" className="w-14 h-14 mx-auto mb-4 rounded-full bg-accent text-white flex items-center justify-center text-2xl">✓</div>
+    <h2 id="celebration-title" className="font-display text-xl mb-2">{message}</h2>
+    <p id="celebration-description" className="text-sm text-slate dark:text-bone/70 mb-6">Your trip fund is fully saved. Time to plan the adventure!</p>
+    <button ref={closeRef} onClick={onClose} className="rounded-full bg-ink dark:bg-bone text-bone dark:text-ink px-6 py-3">Nice!</button>
+  </dialog>;
 }

@@ -14,27 +14,31 @@ export default function ProgressBar({
 }) {
   const fillRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLSpanElement>(null);
-  const clamped = Math.max(0, Math.min(100, percent));
+  const counterRef = useRef({ value: 0 });
+  const clamped = Number.isFinite(percent) ? Math.max(0, Math.min(100, percent)) : 0;
 
   useEffect(() => {
     if (!fillRef.current) return;
-    const counter = { value: 0 };
+    const fill = fillRef.current;
+    const counter = counterRef.current;
+    const duration = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 900;
     anime({
-      targets: fillRef.current,
-      width: `${clamped}%`,
-      duration: 900,
+      targets: fill,
+      scaleX: clamped / 100,
+      duration,
       easing: "cubicBezier(.32,.72,0,1)",
     });
     anime({
       targets: counter,
       value: clamped,
       round: 1,
-      duration: 900,
+      duration,
       easing: "cubicBezier(.32,.72,0,1)",
       update: () => {
         if (labelRef.current) labelRef.current.textContent = `${counter.value}%`;
       },
     });
+    return () => { anime.remove(fill); anime.remove(counter); };
   }, [clamped]);
 
   const status =
@@ -49,8 +53,8 @@ export default function ProgressBar({
             0%
           </span>
         </div>
-        <div className="h-2.5 w-full rounded-full bg-black/5 dark:bg-white/10 overflow-hidden transition-colors duration-300">
-          <div ref={fillRef} className="h-full w-0 rounded-full bg-accent" />
+        <div role="progressbar" aria-label="Trip savings" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(clamped)} className="h-2.5 w-full rounded-full bg-black/5 dark:bg-white/10 overflow-hidden transition-colors duration-300">
+          <div ref={fillRef} className="h-full w-full origin-left rounded-full bg-accent" style={{ transform: "scaleX(0)" }} />
         </div>
         {raised !== undefined && goal !== undefined && (
           <div className="flex items-center justify-between mt-2.5 text-xs transition-colors duration-300">

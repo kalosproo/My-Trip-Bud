@@ -1,0 +1,82 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function member(trip) { return signedIn() && request.auth.uid in trip.memberUids; }
+    function amount(value) { return value is int && value > 0 && value <= 1000000000; }
+    function newMember(data) {
+      return data.keys().hasOnly(['uid', 'displayName', 'photoURL', 'totalSaved'])
+        && data.uid == request.auth.uid && data.displayName is string
+        && data.displayName.size() <= 256 && data.photoURL is string
+        && data.photoURL.size() <= 2048 && data.totalSaved == 0;
+    }
+
+    match /trips/{tripId} {
+      // A team URL is an invitation. Only a direct get is allowed before joining;
+      // listing trips and reading their logs always require membership.
+      allow get: if signedIn() && (resource == null || member(resource.data) || resource.data.mode == 'team');
+      allow list: if member(resource.data);
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['name', 'goalAmount', 'createdBy', 'mode', 'memberUids', 'members'])
+        && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 120
+        && amount(request.resource.data.goalAmount)
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.mode in ['individual', 'team']
+        && request.resource.data.memberUids == [request.auth.uid]
+        && request.resource.data.members.keys().hasOnly([request.auth.uid])
+        && newMember(request.resource.data.members[request.auth.uid]);
+
+      function joining() {
+        let before = resource.data;
+        let after = request.resource.data;
+        return before.mode == 'team' && !member(before)
+          && after.diff(before).affectedKeys().hasOnly(['memberUids', 'members'])
+          && after.memberUids == before.memberUids.concat([request.auth.uid])
+          && after.members.diff(before.members).affectedKeys().hasOnly([request.auth.uid])
+          && newMember(after.members[request.auth.uid]);
+      }
+      function savingsChange() {
+        let before = resource.data;
+        let after = request.resource.data;
+        let uid = request.auth.uid;
+        let entryPath = /databases/$(database)/documents/trips/$(tripId)/savingsLog/$(after.lastSavingsEntryId);
+        let oldAmount = exists(entryPath) ? get(entryPath).data.amount : 0;
+        let newAmount = existsAfter(entryPath) ? getAfter(entryPath).data.amount : 0;
+        return member(before)
+          && after.diff(before).affectedKeys().hasOnly(['members', 'lastSavingsEntryId'])
+          && after.lastSavingsEntryId is string
+          && after.members.diff(before.members).affectedKeys().hasOnly([uid])
+          && after.members[uid].diff(before.members[uid]).affectedKeys().hasOnly(['totalSaved'])
+          && after.members[uid].totalSaved is int && after.members[uid].totalSaved >= 0
+          && (exists(entryPath) || existsAfter(entryPath))
+          && (!exists(entryPath) || get(entryPath).data.uid == uid)
+          && (!existsAfter(entryPath) || getAfter(entryPath).data.uid == uid)
+          && after.members[uid].totalSaved == before.members[uid].totalSaved + newAmount - oldAmount;
+      }
+      allow update: if signedIn() && (joining() || savingsChange());
+
+      match /savingsLog/{entryId} {
+        function trip() { return get(/databases/$(database)/documents/trips/$(tripId)).data; }
+        function validEntry() {
+          let entry = request.resource.data;
+          return entry.keys().hasOnly(['uid', 'displayName', 'amount', 'note', 'createdAt'])
+            && entry.uid == request.auth.uid && entry.displayName is string && entry.displayName.size() <= 256
+            && amount(entry.amount) && (entry.note == null || (entry.note is string && entry.note.size() <= 500));
+        }
+        function balanced(delta) {
+          let before = trip();
+          let after = getAfter(/databases/$(database)/documents/trips/$(tripId)).data;
+          return after.lastSavingsEntryId == entryId
+            && after.members[request.auth.uid].totalSaved == before.members[request.auth.uid].totalSaved + delta;
+        }
+        allow read: if member(trip());
+        allow create: if member(trip()) && validEntry()
+          && request.resource.data.createdAt == request.time && balanced(request.resource.data.amount);
+        allow update: if member(trip()) && resource.data.uid == request.auth.uid && validEntry()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['amount', 'note'])
+          && balanced(request.resource.data.amount - resource.data.amount);
+        allow delete: if member(trip()) && resource.data.uid == request.auth.uid && balanced(-resource.data.amount);
+      }
+    }
+  }
+}
