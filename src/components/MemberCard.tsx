@@ -8,10 +8,10 @@ export default function MemberCard({ member, share }: { member: Member; share: n
     <div className="w-full rounded-2xl bg-white dark:bg-panel ring-1 ring-black/5 dark:ring-white/10 shadow-soft dark:shadow-soft-dark px-4 py-3 flex items-center gap-3 transition-colors duration-300">
       {member.photoURL ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={member.photoURL} alt="" className="w-9 h-9 rounded-full shrink-0" />
+        <img src={member.photoURL} referrerPolicy="no-referrer" alt="" className="w-9 h-9 rounded-full shrink-0" />
       ) : (
         <div className="w-9 h-9 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center text-xs font-semibold text-ink dark:text-bone shrink-0 transition-colors duration-300">
-          {member.displayName.slice(0, 1)}
+          {Array.from(member.displayName)[0] || "?"}
         </div>
       )}
       <div className="flex-1 min-w-0">
@@ -20,7 +20,7 @@ export default function MemberCard({ member, share }: { member: Member; share: n
           ₹{member.totalSaved.toLocaleString("en-IN")} / ₹{share.toLocaleString("en-IN")}
         </p>
         <div className="h-1.5 w-full rounded-full bg-black/5 dark:bg-white/10 overflow-hidden mt-1.5 transition-colors duration-300">
-          <div className="h-full rounded-full bg-accent transition-all duration-500 ease-fluid" style={{ width: `${pct}%` }} />
+          <div className="h-full rounded-full bg-accent origin-left transition-transform duration-500 ease-fluid" style={{ transform: `scaleX(${pct / 100})` }} />
         </div>
       </div>
       {reached ? (

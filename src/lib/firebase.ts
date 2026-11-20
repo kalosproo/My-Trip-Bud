@@ -2,29 +2,9 @@
 
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAnalytics, isSupported as analyticsSupported } from "firebase/analytics";
-import {
-  getAuth,
-  GoogleAuthProvider,
-  signInWithPopup,
-  signOut,
-  onAuthStateChanged,
-  type User,
-} from "firebase/auth";
-import {
-  getFirestore,
-  doc,
-  collection,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  arrayUnion,
-  onSnapshot,
-  serverTimestamp,
-  query,
-  orderBy,
-  where,
-  limit,
-} from "firebase/firestore";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from "firebase/auth";
+import { getFirestore, doc, collection, onSnapshot, query, orderBy, where, type FirestoreError } from "firebase/firestore";
+import * as store from "./trip-store";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -35,157 +15,49 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
-
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-export type { User };
+export type { User } from "firebase/auth";
+export type { Member, Trip, SavingsEntry } from "./trip-store";
 
-if (typeof window !== "undefined") {
-  analyticsSupported().then((ok) => {
-    if (ok) getAnalytics(app);
-  });
+if (typeof window !== "undefined" && firebaseConfig.measurementId) {
+  void analyticsSupported().then((ok) => { if (ok) getAnalytics(app); }).catch(() => {});
 }
 
-export function signInWithGoogle() {
-  return signInWithPopup(auth, new GoogleAuthProvider());
+export async function signInWithGoogle() {
+  const provider = new GoogleAuthProvider();
+  try {
+    await signInWithPopup(auth, provider);
+  } catch (error) {
+    if ((error as { code?: string }).code === "auth/popup-blocked") {
+      await signInWithRedirect(auth, provider);
+      return;
+    }
+    throw error;
+  }
 }
-export function signOutUser() {
-  return signOut(auth);
+export const completeRedirectSignIn = () => getRedirectResult(auth);
+export const signOutUser = () => signOut(auth);
+export const watchAuth = (cb: Parameters<typeof onAuthStateChanged>[1], onError: (error: Error) => void) => onAuthStateChanged(auth, cb, onError);
+
+export const createTrip = (...args: [string, number, store.Profile, store.Trip["mode"]]) => store.createTrip(db, ...args);
+export const joinTrip = (tripId: string, user: store.Profile) => store.joinTrip(db, tripId, user);
+export const addSavingsEntry = (...args: [string, store.Profile, number, string]) => store.addSavingsEntry(db, ...args);
+export const updateSavingsEntry = (...args: [string, string, string, number, string]) => store.updateSavingsEntry(db, ...args);
+export const deleteSavingsEntry = (...args: [string, string, string]) => store.deleteSavingsEntry(db, ...args);
+
+type OnError = (error: FirestoreError) => void;
+export function watchUserTrips(userId: string, cb: (trips: store.Trip[]) => void, onError: OnError) {
+  return onSnapshot(query(collection(db, "trips"), where("memberUids", "array-contains", userId)), (snap) => {
+    cb(snap.docs.map((item) => ({ ...item.data(), id: item.id } as store.Trip)).sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id)));
+  }, onError);
 }
-export function watchAuth(cb: (user: User | null) => void) {
-  return onAuthStateChanged(auth, cb);
+export function watchTrip(tripId: string, cb: (trip: store.Trip | null) => void, onError: OnError) {
+  return onSnapshot(doc(db, "trips", tripId), (snap) => cb(snap.exists() ? { ...snap.data(), id: snap.id } as store.Trip : null), onError);
 }
-
-export type Member = {
-  uid: string;
-  displayName: string;
-  photoURL: string;
-  totalSaved: number;
-};
-
-export type Trip = {
-  id: string;
-  name: string;
-  goalAmount: number;
-  createdBy: string;
-  mode: "individual" | "team";
-  memberUids: string[];
-  members: Record<string, Member>;
-};
-
-export type SavingsEntry = {
-  id: string;
-  uid: string;
-  displayName: string;
-  amount: number;
-  note?: string;
-  createdAt?: unknown;
-};
-
-export async function createTrip(
-  name: string,
-  goalAmount: number,
-  user: User,
-  mode: "individual" | "team"
-) {
-  const member: Member = {
-    uid: user.uid,
-    displayName: user.displayName ?? "Friend",
-    photoURL: user.photoURL ?? "",
-    totalSaved: 0,
-  };
-  const ref = await addDoc(collection(db, "trips"), {
-    name,
-    goalAmount,
-    createdBy: user.uid,
-    mode,
-    memberUids: [user.uid],
-    members: { [user.uid]: member },
-  });
-  return ref.id;
-}
-
-export function watchUserTrip(userId: string, cb: (trip: Trip | null) => void) {
-  const q = query(collection(db, "trips"), where("createdBy", "==", userId), limit(1));
-  return onSnapshot(q, (snap) => {
-    const item = snap.docs[0];
-    cb(item ? ({ id: item.id, ...item.data() } as Trip) : null);
-  });
-}
-
-export async function joinTrip(tripId: string, user: User) {
-  const member: Member = {
-    uid: user.uid,
-    displayName: user.displayName ?? "Friend",
-    photoURL: user.photoURL ?? "",
-    totalSaved: 0,
-  };
-  await updateDoc(doc(db, "trips", tripId), {
-    memberUids: arrayUnion(user.uid),
-    [`members.${user.uid}`]: member,
-  });
-}
-
-export function watchTrip(tripId: string, cb: (trip: Trip | null) => void) {
-  return onSnapshot(doc(db, "trips", tripId), (snap) => {
-    cb(snap.exists() ? ({ id: snap.id, ...snap.data() } as Trip) : null);
-  });
-}
-
-export function watchSavingsLog(tripId: string, cb: (entries: SavingsEntry[]) => void) {
-  const q = query(collection(db, "trips", tripId, "savingsLog"), orderBy("createdAt", "desc"));
-  return onSnapshot(q, (snap) => {
-    cb(snap.docs.map((d) => ({ id: d.id, ...d.data() } as SavingsEntry)));
-  });
-}
-
-export async function addSavingsEntry(
-  tripId: string,
-  user: User,
-  amount: number,
-  note: string,
-  currentTotal: number
-) {
-  await addDoc(collection(db, "trips", tripId, "savingsLog"), {
-    uid: user.uid,
-    displayName: user.displayName ?? "Friend",
-    amount,
-    note: note || null,
-    createdAt: serverTimestamp(),
-  });
-  await updateDoc(doc(db, "trips", tripId), {
-    [`members.${user.uid}.totalSaved`]: currentTotal + amount,
-  });
-}
-
-export async function updateSavingsEntry(
-  tripId: string,
-  entryId: string,
-  uid: string,
-  oldAmount: number,
-  newAmount: number,
-  note: string,
-  currentTotal: number
-) {
-  await updateDoc(doc(db, "trips", tripId, "savingsLog", entryId), {
-    amount: newAmount,
-    note: note || null,
-  });
-  await updateDoc(doc(db, "trips", tripId), {
-    [`members.${uid}.totalSaved`]: currentTotal - oldAmount + newAmount,
-  });
-}
-
-export async function deleteSavingsEntry(
-  tripId: string,
-  entryId: string,
-  uid: string,
-  amount: number,
-  currentTotal: number
-) {
-  await deleteDoc(doc(db, "trips", tripId, "savingsLog", entryId));
-  await updateDoc(doc(db, "trips", tripId), {
-    [`members.${uid}.totalSaved`]: currentTotal - amount,
-  });
+export function watchSavingsLog(tripId: string, cb: (entries: store.SavingsEntry[]) => void, onError: OnError) {
+  return onSnapshot(query(collection(db, "trips", tripId, "savingsLog"), orderBy("createdAt", "desc")), (snap) => {
+    cb(snap.docs.map((entry) => ({ ...entry.data(), id: entry.id } as store.SavingsEntry)));
+  }, onError);
 }

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { errorMessage } from "@/lib/errors";
+import { validateAmount } from "@/lib/money";
 
 export default function AddSavingsForm({
   onAdd,
@@ -10,26 +12,33 @@ export default function AddSavingsForm({
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     const value = Number(amount);
-    if (!value || value <= 0) return;
+    if (busy) return;
     setBusy(true);
-    await onAdd(value, note.trim());
-    setAmount("");
-    setNote("");
-    setBusy(false);
+    setError("");
+    try {
+      validateAmount(value);
+      await onAdd(value, note.trim());
+      setAmount(""); setNote("");
+    } catch (failure) { setError(errorMessage(failure)); }
+    finally { setBusy(false); }
   }
 
   return (
     <form
       onSubmit={submit}
-      className="w-full rounded-2xl bg-white dark:bg-panel ring-1 ring-black/5 dark:ring-white/10 shadow-soft dark:shadow-soft-dark p-4 flex flex-col sm:flex-row gap-3 transition-colors duration-300"
+      className="w-full rounded-2xl bg-white dark:bg-panel ring-1 ring-black/5 dark:ring-white/10 shadow-soft dark:shadow-soft-dark p-4 flex flex-col sm:flex-row sm:flex-wrap gap-3 transition-colors duration-300"
     >
       <input
         type="number"
         min="1"
+        max="1000000000"
+        step="1"
+        aria-label="Amount saved in rupees"
         inputMode="decimal"
         placeholder="₹ amount saved"
         value={amount}
@@ -39,6 +48,8 @@ export default function AddSavingsForm({
       />
       <input
         type="text"
+        aria-label="Savings note"
+        maxLength={500}
         placeholder="Note (optional)"
         value={note}
         onChange={(e) => setNote(e.target.value)}
@@ -51,6 +62,7 @@ export default function AddSavingsForm({
       >
         {busy ? "Adding…" : "Add"}
       </button>
+      {error && <p role="alert" className="basis-full text-sm text-red-700 dark:text-red-300">{error}</p>}
     </form>
   );
 }
